@@ -1,4 +1,5 @@
 ﻿using System;
+using System.Collections.Generic;
 using System.Diagnostics;
 using System.Threading;
 using System.Threading.Tasks;
@@ -9,19 +10,35 @@ namespace AsyncTasks
     {
         public static void Main(string[] args)
         {
+            // First task
             var cancellationTokenSource = new CancellationTokenSource();
             var token = cancellationTokenSource.Token;
-            var timer = new Stopwatch();
 
-            timer.Start();
+            var tasks = new List<Task<int>>()
+            {
+                Task.Run(() => CalculateFibonacсiNumberByIndex(10, token)),
+                Task.Run(() => CalculateFibonacсiNumberByIndex(20, token)),
+                Task.Run(() => CalculateFibonacсiNumberByIndex(5, token))
+            };
+
+            var results = Task.WhenAll(tasks);
+
+            foreach (var result in results.GetAwaiter().GetResult())
+            {
+                Console.WriteLine(result);
+            }
+
+            // Second task
+            var timer = 10000;
+            cancellationTokenSource.CancelAfter(timer);
 
             try
             {
-                var task = Task.Run(() => CalculateFibonacсiNumberByIndexAsync(50, timer, token, cancellationTokenSource));
+                var task = Task.Run(() => CalculateFibonacсiNumberByIndexAsync(50, token));
 
-                int? result = task.GetAwaiter().GetResult();
+                var result = task.GetAwaiter().GetResult();
 
-                Console.WriteLine($"Fibonacci number is {result.Value}");
+                Console.WriteLine($"Fibonacci number is {result}");
             }
             catch (Exception exception)
             {
@@ -29,29 +46,21 @@ namespace AsyncTasks
             }
         }
 
-        public static async Task<int> CalculateFibonacсiNumberByIndexAsync(int index, Stopwatch timer, CancellationToken token, CancellationTokenSource cancellationTokenSource)
+        public static async Task<int> CalculateFibonacсiNumberByIndexAsync(int index, CancellationToken token)
         {
-            return await Task.Run(() => CalculateFibonacсiNumberByIndex(index, timer, token, cancellationTokenSource));
+            return await Task.Run(() => CalculateFibonacсiNumberByIndex(index, token));
         }
 
-        public static int CalculateFibonacсiNumberByIndex(int index, Stopwatch timer, CancellationToken token, CancellationTokenSource cancellationTokenSource)
+        public static int CalculateFibonacсiNumberByIndex(int index, CancellationToken token)
         {
-            if (timer.ElapsedMilliseconds > 10000)
-            {
-                cancellationTokenSource.Cancel();
-            }
-
-            if (token.IsCancellationRequested)
-            {
-                throw new Exception("Execution time was more than 10 seconds!");
-            }
+            token.ThrowIfCancellationRequested();
 
             if (index == 0 || index == 1)
             {
                 return index;
             }
 
-            return CalculateFibonacсiNumberByIndex(index - 1, timer, token, cancellationTokenSource) + CalculateFibonacсiNumberByIndex(index - 2, timer, token, cancellationTokenSource);
+            return CalculateFibonacсiNumberByIndex(index - 1, token) + CalculateFibonacсiNumberByIndex(index - 2, token);
         }
     }
 }
